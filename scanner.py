@@ -13,13 +13,13 @@ class Scanner:
         vulnerable = False
         for param in query_params:
             original = query_params[param][0]
-            query_params[param][0] = self.payload
+            query_params[param][0] = self.payloads
             new_query = urlencode(query_params, doseq=True) # doseq mi spravne posklada query - https://docs.python.org/3/library/urllib.parse.html
             new_url = urlunparse(parsed._replace(query=new_query))
 
             try:
                 response = requests.get(new_url, timeout=5)
-                if self.payloads in response.text:
+                if any(payload in response.text for payload in self.payloads):
                     print(f"[!] XSS zranitelnost nalezena na {new_url}")
                     vulnerable = True
             except requests.RequestException as e:
