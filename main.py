@@ -1,44 +1,43 @@
-from scanner import Scanner
-from shodan_cli import ShodanClient
-from urllib.parse import urlparse
-import socket
-from dotenv import load_dotenv
 import os
+from typing import Dict, Any
+from dotenv import load_dotenv
+from scanner import Scanner
+from virustotal_cli import VirusTotalClient
 
-load_dotenv()  # pouziti env pro ulozeni api key
+load_dotenv()
 
 # for an XSS attack you can try http://testphp.vulnweb.com/artists.php?artist=1. it's an Acunetix test webpage, all legal
 
-def get_ip_from_url(url):
+def print_vt_report(vt_report: Dict[str, Any]) -> None:
+    stats = vt_report.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
+
+    if stats:
+        print("VirusTotal test:")
+        print(f"  Malicious:   {stats.get('malicious', 0)}")
+        print(f"  Suspicious:  {stats.get('suspicious', 0)}")
+        print(f"  Harmless:    {stats.get('harmless', 0)}")
+        print(f"  Undetected:  {stats.get('undetected', 0)}")
+        print(f"  Timeout:     {stats.get('timeout', 0)}")
+    else:
+        print("VirusTotal nic nenalezl.")
+
+def main() -> None:
+    url: str = input("Zadej URL k jednoduchému testu: ").strip()
+    scanner = Scanner()
+    vt_client = VirusTotalClient(api_key=os.getenv("VT_API_KEY"))
+
+    print("[*] Kontroluji XSS ...")
+    if scanner.is_vulnerable(url):
+        print("[!] URL je zranitelná vůči XSS útoku!")
+    else:
+        print("[+] URL není zranitelná vůči XSS útoku.")
+
+    print("[*] Načítám informace z VirusTotal...")
     try:
-        domain = urlparse(url).netloc
-        return socket.gethostbyname(domain)
+        vt_report = vt_client.get_url_report(url)
+        print_vt_report(vt_report)
     except Exception as e:
-        print(f"[chyba při překladu domény] {e}")
-        return None
+        print(f"Chyba VirusTotal: {e}")
 
 if __name__ == "__main__":
-    test_url = input("Zadej URL k otestování: ").strip()
-
-    # --- Krok 1: Test XSS ---
-    print("\n[+] Spouštím test XSS...")
-    scanner = Scanner()
-    is_vulnerable = scanner.is_vulnerable(test_url)
-
-    if is_vulnerable:
-        print("[!] URL je pravděpodobně zranitelná na XSS.")
-    else:
-        print("[✓] XSS zranitelnost nebyla detekována.")
-
-    # --- Krok 2: Shodan informace ---
-    print("\n[+] Načítám informace ze Shodan.io...")
-    ip = get_ip_from_url(test_url)
-
-    if ip:
-        shodan_client = ShodanClient()
-        result = shodan_client.get_host_info(ip)
-        print("[SHODAN VÝSTUP]")
-        for key, value in result.items():
-            print(f"{key}: {value}")
-    else:
-        print("[!] Nepodařilo se získat IP adresu z URL.")
+    main()
