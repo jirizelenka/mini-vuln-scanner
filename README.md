@@ -41,8 +41,9 @@ This project was created as part of my journey to learn more about Python and my
     ```bash
     VT_API_KEY=your_virustotal_api_key
 
-4. Run the GUI application:
+4. Run the application in the terminal or GUI:
    ```bash
+   python main.py
    python gui.py
 
 5. Enter the URL you want to scan and start the scan.
